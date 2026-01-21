@@ -1,0 +1,288 @@
+import type { AgnoClientConfig } from '@rodrigocoliveira/agno-types';
+
+/**
+ * Manages client configuration
+ */
+export class ConfigManager {
+  private config: AgnoClientConfig;
+
+  constructor(initialConfig: AgnoClientConfig) {
+    this.config = { ...initialConfig };
+  }
+
+  /**
+   * Get current configuration
+   */
+  getConfig(): AgnoClientConfig {
+    return { ...this.config };
+  }
+
+  /**
+   * Update configuration
+   */
+  updateConfig(updates: Partial<AgnoClientConfig>): void {
+    this.config = { ...this.config, ...updates };
+  }
+
+  /**
+   * Helper to update a single field immutably
+   */
+  private updateField<K extends keyof AgnoClientConfig>(
+    key: K,
+    value: AgnoClientConfig[K]
+  ): void {
+    this.config = { ...this.config, [key]: value };
+  }
+
+  /**
+   * Get endpoint URL
+   */
+  getEndpoint(): string {
+    return this.config.endpoint;
+  }
+
+  /**
+   * Set endpoint URL
+   */
+  setEndpoint(endpoint: string): void {
+    this.updateField('endpoint', endpoint);
+  }
+
+  /**
+   * Get auth token
+   */
+  getAuthToken(): string | undefined {
+    return this.config.authToken;
+  }
+
+  /**
+   * Set auth token
+   */
+  setAuthToken(token: string | undefined): void {
+    this.updateField('authToken', token);
+  }
+
+  /**
+   * Get mode (agent or team)
+   */
+  getMode(): 'agent' | 'team' {
+    return this.config.mode || 'agent';
+  }
+
+  /**
+   * Set mode
+   */
+  setMode(mode: 'agent' | 'team'): void {
+    this.updateField('mode', mode);
+  }
+
+  /**
+   * Get agent ID
+   */
+  getAgentId(): string | undefined {
+    return this.config.agentId;
+  }
+
+  /**
+   * Set agent ID
+   */
+  setAgentId(agentId: string | undefined): void {
+    this.updateField('agentId', agentId);
+  }
+
+  /**
+   * Get team ID
+   */
+  getTeamId(): string | undefined {
+    return this.config.teamId;
+  }
+
+  /**
+   * Set team ID
+   */
+  setTeamId(teamId: string | undefined): void {
+    this.updateField('teamId', teamId);
+  }
+
+  /**
+   * Get database ID
+   */
+  getDbId(): string | undefined {
+    return this.config.dbId;
+  }
+
+  /**
+   * Set database ID
+   */
+  setDbId(dbId: string | undefined): void {
+    this.updateField('dbId', dbId);
+  }
+
+  /**
+   * Get session ID
+   */
+  getSessionId(): string | undefined {
+    return this.config.sessionId;
+  }
+
+  /**
+   * Set session ID
+   */
+  setSessionId(sessionId: string | undefined): void {
+    this.updateField('sessionId', sessionId);
+  }
+
+  /**
+   * Get user ID
+   */
+  getUserId(): string | undefined {
+    return this.config.userId;
+  }
+
+  /**
+   * Set user ID
+   */
+  setUserId(userId: string | undefined): void {
+    this.updateField('userId', userId);
+  }
+
+  /**
+   * Get custom headers
+   */
+  getHeaders(): Record<string, string> | undefined {
+    return this.config.headers;
+  }
+
+  /**
+   * Set custom headers
+   */
+  setHeaders(headers: Record<string, string> | undefined): void {
+    this.updateField('headers', headers);
+  }
+
+  /**
+   * Get global query parameters
+   */
+  getParams(): Record<string, string> | undefined {
+    return this.config.params;
+  }
+
+  /**
+   * Set global query parameters
+   */
+  setParams(params: Record<string, string> | undefined): void {
+    this.updateField('params', params);
+  }
+
+  /**
+   * Get current entity ID (agent or team based on mode)
+   */
+  getCurrentEntityId(): string | undefined {
+    return this.getMode() === 'agent' ? this.getAgentId() : this.getTeamId();
+  }
+
+  /**
+   * Construct the run URL based on current config
+   */
+  getRunUrl(): string | null {
+    const mode = this.getMode();
+    const endpoint = this.getEndpoint();
+    const entityId = this.getCurrentEntityId();
+
+    if (!entityId) return null;
+
+    // Encode entity ID to prevent path traversal and handle special characters
+    const encodedEntityId = encodeURIComponent(entityId);
+
+    if (mode === 'team') {
+      return `${endpoint}/teams/${encodedEntityId}/runs`;
+    } else {
+      return `${endpoint}/agents/${encodedEntityId}/runs`;
+    }
+  }
+
+  /**
+   * Construct the cancel URL for a specific run
+   * POST /agents/{agent_id}/runs/{run_id}/cancel
+   * POST /teams/{team_id}/runs/{run_id}/cancel
+   *
+   * @param runId - The run ID to cancel
+   * @returns The cancel URL or null if entity ID is not configured
+   */
+  getCancelUrl(runId: string): string | null {
+    const mode = this.getMode();
+    const endpoint = this.getEndpoint();
+    const entityId = this.getCurrentEntityId();
+
+    if (!entityId || !runId) return null;
+
+    // Encode IDs to prevent path traversal and handle special characters
+    const encodedEntityId = encodeURIComponent(entityId);
+    const encodedRunId = encodeURIComponent(runId);
+
+    if (mode === 'team') {
+      return `${endpoint}/teams/${encodedEntityId}/runs/${encodedRunId}/cancel`;
+    } else {
+      return `${endpoint}/agents/${encodedEntityId}/runs/${encodedRunId}/cancel`;
+    }
+  }
+
+  /**
+   * Build request headers by merging global headers, per-request headers, and auth token.
+   * Merge order (lowest to highest precedence):
+   * 1. Global headers from config
+   * 2. Per-request headers (overrides global)
+   * 3. Authorization header from authToken (overrides all)
+   *
+   * @param perRequestHeaders - Optional headers for this specific request
+   * @returns Merged headers object ready for fetch
+   */
+  buildRequestHeaders(perRequestHeaders?: Record<string, string>): Record<string, string> {
+    const headers: Record<string, string> = {};
+
+    // 1. Apply global headers from config
+    const globalHeaders = this.getHeaders();
+    if (globalHeaders) {
+      Object.assign(headers, globalHeaders);
+    }
+
+    // 2. Apply per-request headers (overrides global)
+    if (perRequestHeaders) {
+      Object.assign(headers, perRequestHeaders);
+    }
+
+    // 3. Apply Authorization from authToken (overrides all)
+    const authToken = this.getAuthToken();
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+
+    return headers;
+  }
+
+  /**
+   * Build query string by merging global params and per-request params.
+   * Merge order (lowest to highest precedence):
+   * 1. Global params from config
+   * 2. Per-request params (overrides global)
+   *
+   * @param perRequestParams - Optional query parameters for this specific request
+   * @returns URLSearchParams object ready to append to URLs
+   */
+  buildQueryString(perRequestParams?: Record<string, string>): URLSearchParams {
+    const params: Record<string, string> = {};
+
+    // 1. Apply global params from config
+    const globalParams = this.getParams();
+    if (globalParams) {
+      Object.assign(params, globalParams);
+    }
+
+    // 2. Apply per-request params (overrides global)
+    if (perRequestParams) {
+      Object.assign(params, perRequestParams);
+    }
+
+    return new URLSearchParams(params);
+  }
+}
