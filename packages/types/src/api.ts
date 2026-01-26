@@ -286,6 +286,44 @@ export interface TeamSessionRunsResponse {
 }
 
 /**
+ * Create session request
+ */
+export interface CreateSessionRequest {
+  session_id?: string | null;
+  session_name?: string | null;
+  session_state?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  user_id?: string | null;
+  agent_id?: string | null;
+  team_id?: string | null;
+}
+
+/**
+ * Update session request
+ */
+export interface UpdateSessionRequest {
+  session_name?: string | null;
+  session_state?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
+  summary?: Record<string, unknown> | null;
+}
+
+/**
+ * Rename session request
+ */
+export interface RenameSessionRequest {
+  session_name: string;
+}
+
+/**
+ * Delete multiple sessions request
+ */
+export interface DeleteMultipleSessionsRequest {
+  session_ids: string[];
+  session_types: Array<'agent' | 'team'>;
+}
+
+/**
  * Data payload for CustomEvent events emitted by agent tools.
  *
  * Custom events contain standard metadata fields plus arbitrary

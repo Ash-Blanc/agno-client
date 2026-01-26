@@ -42,6 +42,10 @@ export type {
   SessionRunsResponse,
   TeamSessionRunsResponse,
   CustomEventData,
+  CreateSessionRequest,
+  UpdateSessionRequest,
+  RenameSessionRequest,
+  DeleteMultipleSessionsRequest,
 } from './api';
 
 // Config
