@@ -5,6 +5,10 @@ import type {
   RunSchema,
   TeamRunSchema,
   ToolCall,
+  AgentSessionDetailSchema,
+  TeamSessionDetailSchema,
+  CreateSessionRequest,
+  UpdateSessionRequest,
 } from '@rodrigocoliveira/agno-types';
 
 /**
@@ -117,6 +121,246 @@ export class SessionManager {
     }
   }
 
+  /**
+   * Get a session by ID
+   */
+  async getSessionById(
+    endpoint: string,
+    entityType: 'agent' | 'team',
+    sessionId: string,
+    dbId: string,
+    headers: Record<string, string>,
+    userId?: string,
+    params?: URLSearchParams
+  ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> {
+    const url = new URL(`${endpoint}/sessions/${sessionId}`);
+    url.searchParams.set('type', entityType);
+    if (dbId) {
+      url.searchParams.set('db_id', dbId);
+    }
+    if (userId) {
+      url.searchParams.set('user_id', userId);
+    }
+
+    // Merge additional params if provided
+    if (params) {
+      params.forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+    }
+
+    const response = await fetch(url.toString(), { headers });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get session: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Get a run by ID
+   */
+  async getRunById(
+    endpoint: string,
+    entityType: 'agent' | 'team',
+    sessionId: string,
+    runId: string,
+    dbId: string,
+    headers: Record<string, string>,
+    userId?: string,
+    params?: URLSearchParams
+  ): Promise<RunSchema | TeamRunSchema> {
+    const url = new URL(`${endpoint}/sessions/${sessionId}/runs/${runId}`);
+    url.searchParams.set('type', entityType);
+    if (dbId) {
+      url.searchParams.set('db_id', dbId);
+    }
+    if (userId) {
+      url.searchParams.set('user_id', userId);
+    }
+
+    // Merge additional params if provided
+    if (params) {
+      params.forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+    }
+
+    const response = await fetch(url.toString(), { headers });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get run: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Create a new session
+   */
+  async createSession(
+    endpoint: string,
+    entityType: 'agent' | 'team',
+    request: CreateSessionRequest,
+    dbId: string,
+    headers: Record<string, string>,
+    params?: URLSearchParams
+  ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> {
+    const url = new URL(`${endpoint}/sessions`);
+    url.searchParams.set('type', entityType);
+    if (dbId) {
+      url.searchParams.set('db_id', dbId);
+    }
+
+    // Merge additional params if provided
+    if (params) {
+      params.forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to create session: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Update a session
+   */
+  async updateSession(
+    endpoint: string,
+    entityType: 'agent' | 'team',
+    sessionId: string,
+    request: UpdateSessionRequest,
+    dbId: string,
+    headers: Record<string, string>,
+    userId?: string,
+    params?: URLSearchParams
+  ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> {
+    const url = new URL(`${endpoint}/sessions/${sessionId}`);
+    url.searchParams.set('type', entityType);
+    if (dbId) {
+      url.searchParams.set('db_id', dbId);
+    }
+    if (userId) {
+      url.searchParams.set('user_id', userId);
+    }
+
+    // Merge additional params if provided
+    if (params) {
+      params.forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'PATCH',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(request),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to update session: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Rename a session
+   */
+  async renameSession(
+    endpoint: string,
+    entityType: 'agent' | 'team',
+    sessionId: string,
+    newName: string,
+    dbId: string,
+    headers: Record<string, string>,
+    params?: URLSearchParams
+  ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> {
+    const url = new URL(`${endpoint}/sessions/${sessionId}/rename`);
+    url.searchParams.set('type', entityType);
+    if (dbId) {
+      url.searchParams.set('db_id', dbId);
+    }
+
+    // Merge additional params if provided
+    if (params) {
+      params.forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ session_name: newName }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to rename session: ${response.statusText}`);
+    }
+
+    return await response.json();
+  }
+
+  /**
+   * Delete multiple sessions
+   */
+  async deleteMultipleSessions(
+    endpoint: string,
+    sessionIds: string[],
+    sessionTypes: Array<'agent' | 'team'>,
+    dbId: string,
+    headers: Record<string, string>,
+    params?: URLSearchParams
+  ): Promise<void> {
+    const url = new URL(`${endpoint}/sessions`);
+    if (dbId) {
+      url.searchParams.set('db_id', dbId);
+    }
+
+    // Merge additional params if provided
+    if (params) {
+      params.forEach((value, key) => {
+        url.searchParams.set(key, value);
+      });
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'DELETE',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        session_ids: sessionIds,
+        session_types: sessionTypes,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to delete sessions: ${response.statusText}`);
+    }
+  }
 
   /**
    * Convert session runs array to chat messages

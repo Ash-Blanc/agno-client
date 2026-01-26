@@ -9,6 +9,12 @@ import type {
   ClientState,
   ToolCall,
   CustomEventData,
+  AgentSessionDetailSchema,
+  TeamSessionDetailSchema,
+  RunSchema,
+  TeamRunSchema,
+  CreateSessionRequest,
+  UpdateSessionRequest,
 } from '@rodrigocoliveira/agno-types';
 import { RunEvent } from '@rodrigocoliveira/agno-types';
 import { MessageStore } from './stores/message-store';
@@ -872,6 +878,228 @@ export class AgnoClient extends EventEmitter {
     this.emit('state:change', this.getState());
   }
 
+  /**
+   * Get a session by ID
+   */
+  async getSessionById(
+    sessionId: string,
+    options?: { params?: Record<string, string> }
+  ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> {
+    const config = this.configManager.getConfig();
+    const entityType = this.configManager.getMode();
+    const dbId = this.configManager.getDbId() || '';
+    const userId = this.configManager.getUserId();
+
+    const headers = this.configManager.buildRequestHeaders();
+    const params = this.configManager.buildQueryString(options?.params);
+
+    return await this.sessionManager.getSessionById(
+      config.endpoint,
+      entityType,
+      sessionId,
+      dbId,
+      headers,
+      userId,
+      params
+    );
+  }
+
+  /**
+   * Get a run by ID
+   */
+  async getRunById(
+    sessionId: string,
+    runId: string,
+    options?: { params?: Record<string, string> }
+  ): Promise<RunSchema | TeamRunSchema> {
+    const config = this.configManager.getConfig();
+    const entityType = this.configManager.getMode();
+    const dbId = this.configManager.getDbId() || '';
+    const userId = this.configManager.getUserId();
+
+    const headers = this.configManager.buildRequestHeaders();
+    const params = this.configManager.buildQueryString(options?.params);
+
+    return await this.sessionManager.getRunById(
+      config.endpoint,
+      entityType,
+      sessionId,
+      runId,
+      dbId,
+      headers,
+      userId,
+      params
+    );
+  }
+
+  /**
+   * Create a new session
+   */
+  async createSession(
+    request?: CreateSessionRequest,
+    options?: { params?: Record<string, string> }
+  ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> {
+    const config = this.configManager.getConfig();
+    const entityType = this.configManager.getMode();
+    const entityId = this.configManager.getCurrentEntityId();
+    const dbId = this.configManager.getDbId() || '';
+
+    // Build request with entity ID
+    const sessionRequest: CreateSessionRequest = {
+      ...request,
+      ...(entityType === 'agent' ? { agent_id: entityId } : { team_id: entityId }),
+    };
+
+    const headers = this.configManager.buildRequestHeaders();
+    const params = this.configManager.buildQueryString(options?.params);
+
+    const session = await this.sessionManager.createSession(
+      config.endpoint,
+      entityType,
+      sessionRequest,
+      dbId,
+      headers,
+      params
+    );
+
+    // Add to state and emit event
+    const sessionEntry: SessionEntry = {
+      session_id: session.session_id,
+      session_name: session.session_name,
+      created_at: session.created_at || null,
+      updated_at: session.updated_at || null,
+    };
+    this.state.sessions = [sessionEntry, ...this.state.sessions];
+    this.emit('session:created', sessionEntry);
+    this.emit('state:change', this.getState());
+
+    return session;
+  }
+
+  /**
+   * Update a session
+   */
+  async updateSession(
+    sessionId: string,
+    request: UpdateSessionRequest,
+    options?: { params?: Record<string, string> }
+  ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> {
+    const config = this.configManager.getConfig();
+    const entityType = this.configManager.getMode();
+    const dbId = this.configManager.getDbId() || '';
+    const userId = this.configManager.getUserId();
+
+    const headers = this.configManager.buildRequestHeaders();
+    const params = this.configManager.buildQueryString(options?.params);
+
+    const session = await this.sessionManager.updateSession(
+      config.endpoint,
+      entityType,
+      sessionId,
+      request,
+      dbId,
+      headers,
+      userId,
+      params
+    );
+
+    // Update in state
+    this.state.sessions = this.state.sessions.map((s) =>
+      s.session_id === sessionId
+        ? {
+            ...s,
+            session_name: session.session_name,
+            updated_at: session.updated_at || s.updated_at,
+          }
+        : s
+    );
+    this.emit('session:updated', session);
+    this.emit('state:change', this.getState());
+
+    return session;
+  }
+
+  /**
+   * Rename a session
+   */
+  async renameSession(
+    sessionId: string,
+    newName: string,
+    options?: { params?: Record<string, string> }
+  ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> {
+    const config = this.configManager.getConfig();
+    const entityType = this.configManager.getMode();
+    const dbId = this.configManager.getDbId() || '';
+
+    const headers = this.configManager.buildRequestHeaders();
+    const params = this.configManager.buildQueryString(options?.params);
+
+    const session = await this.sessionManager.renameSession(
+      config.endpoint,
+      entityType,
+      sessionId,
+      newName,
+      dbId,
+      headers,
+      params
+    );
+
+    // Update in state
+    this.state.sessions = this.state.sessions.map((s) =>
+      s.session_id === sessionId
+        ? {
+            ...s,
+            session_name: newName,
+            updated_at: session.updated_at || s.updated_at,
+          }
+        : s
+    );
+    this.emit('session:renamed', { sessionId, newName, session });
+    this.emit('state:change', this.getState());
+
+    return session;
+  }
+
+  /**
+   * Delete multiple sessions
+   */
+  async deleteMultipleSessions(
+    sessionIds: string[],
+    options?: { params?: Record<string, string> }
+  ): Promise<void> {
+    const config = this.configManager.getConfig();
+    const entityType = this.configManager.getMode();
+    const dbId = this.configManager.getDbId() || '';
+
+    // All sessions will be of the same type (current entity type)
+    const sessionTypes = sessionIds.map(() => entityType);
+
+    const headers = this.configManager.buildRequestHeaders();
+    const params = this.configManager.buildQueryString(options?.params);
+
+    await this.sessionManager.deleteMultipleSessions(
+      config.endpoint,
+      sessionIds,
+      sessionTypes,
+      dbId,
+      headers,
+      params
+    );
+
+    // Remove from state
+    const deletedIds = new Set(sessionIds);
+    this.state.sessions = this.state.sessions.filter(
+      (s) => !deletedIds.has(s.session_id)
+    );
+
+    // Clear messages if current session was deleted
+    const currentSessionId = this.configManager.getSessionId();
+    if (currentSessionId && deletedIds.has(currentSessionId)) {
+      this.clearMessages();
+    }
+
+    this.emit('state:change', this.getState());
+  }
 
   /**
    * Add tool calls to the last message
