@@ -1,5 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { SessionEntry, ChatMessage } from '@rodrigocoliveira/agno-types';
+import type {
+  SessionEntry,
+  ChatMessage,
+  AgentSessionDetailSchema,
+  TeamSessionDetailSchema,
+  RunSchema,
+  TeamRunSchema,
+  CreateSessionRequest,
+  UpdateSessionRequest,
+} from '@rodrigocoliveira/agno-types';
 import { useAgnoClient } from '../context/AgnoContext';
 
 /**
@@ -87,11 +96,183 @@ export function useAgnoSession() {
     }
   }, [client]);
 
+  /**
+   * Get a session by ID
+   */
+  const getSessionById = useCallback(
+    async (
+      sessionId: string,
+      options?: { params?: Record<string, string> }
+    ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> => {
+      setIsLoading(true);
+      setError(undefined);
+      try {
+        return await client.getSessionById(sessionId, options);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  /**
+   * Get a run by ID
+   */
+  const getRunById = useCallback(
+    async (
+      sessionId: string,
+      runId: string,
+      options?: { params?: Record<string, string> }
+    ): Promise<RunSchema | TeamRunSchema> => {
+      setIsLoading(true);
+      setError(undefined);
+      try {
+        return await client.getRunById(sessionId, runId, options);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  /**
+   * Create a new session
+   */
+  const createSession = useCallback(
+    async (
+      request?: CreateSessionRequest,
+      options?: { params?: Record<string, string> }
+    ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> => {
+      setIsLoading(true);
+      setError(undefined);
+      try {
+        const session = await client.createSession(request, options);
+        return session;
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  /**
+   * Update a session
+   */
+  const updateSession = useCallback(
+    async (
+      sessionId: string,
+      request: UpdateSessionRequest,
+      options?: { params?: Record<string, string> }
+    ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> => {
+      setIsLoading(true);
+      setError(undefined);
+      try {
+        return await client.updateSession(sessionId, request, options);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  /**
+   * Rename a session
+   */
+  const renameSession = useCallback(
+    async (
+      sessionId: string,
+      newName: string,
+      options?: { params?: Record<string, string> }
+    ): Promise<AgentSessionDetailSchema | TeamSessionDetailSchema> => {
+      setIsLoading(true);
+      setError(undefined);
+      try {
+        return await client.renameSession(sessionId, newName, options);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  /**
+   * Delete a session
+   */
+  const deleteSession = useCallback(
+    async (
+      sessionId: string,
+      options?: { params?: Record<string, string> }
+    ): Promise<void> => {
+      setIsLoading(true);
+      setError(undefined);
+      try {
+        await client.deleteSession(sessionId, options);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
+  /**
+   * Delete multiple sessions
+   */
+  const deleteMultipleSessions = useCallback(
+    async (
+      sessionIds: string[],
+      options?: { params?: Record<string, string> }
+    ): Promise<void> => {
+      setIsLoading(true);
+      setError(undefined);
+      try {
+        await client.deleteMultipleSessions(sessionIds, options);
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        setError(errorMessage);
+        throw err;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [client]
+  );
+
   return {
     sessions,
     currentSessionId,
     loadSession,
     fetchSessions,
+    getSessionById,
+    getRunById,
+    createSession,
+    updateSession,
+    renameSession,
+    deleteSession,
+    deleteMultipleSessions,
     isLoading,
     error,
   };
