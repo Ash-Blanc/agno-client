@@ -3,9 +3,9 @@ import type { CustomEventData } from '@rodrigocoliveira/agno-types';
 import { useAgnoClient } from '../context/AgnoContext';
 
 /**
- * React hook to subscribe to custom events from the agent.
+ * React hook to subscribe to custom events emitted by the agent backend (yielding CustomEventData).
  *
- * Custom events are emitted when agent tools send user-defined data
+ * Custom events are emitted when agent yeilds data not directly related to tool execution or chat messages,
  * through the CustomEvent API event type.
  *
  * @param handler - Optional callback invoked for each custom event

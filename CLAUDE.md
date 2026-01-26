@@ -88,13 +88,14 @@ fetch stream → StreamParser.parseBuffer() → RunResponse chunks
 The React package wraps the core client with React-specific patterns:
 
 ```
-<AgnoProvider>                    # Creates AgnoClient via useRef
-└── AgnoContext                   # Provides client instance
-    └── useAgnoClient()           # Access client directly
-        ├── useAgnoChat()         # Message management + streaming
-        ├── useAgnoSession()      # Session loading/management
-        ├── useAgnoActions()      # Initialization + helpers
+<AgnoProvider>                     # Creates AgnoClient via useRef
+└── AgnoContext                    # Provides client instance
+    └── useAgnoClient()            # Access client directly
+        ├── useAgnoChat()          # Message management + streaming
+        ├── useAgnoSession()       # Session loading/management
+        ├── useAgnoActions()       # Initialization + helpers
         └── useAgnoToolExecution() # Frontend tool execution (HITL)
+        └── useAgnoCustomEvents()  # Custom Events yeilds by the AgentOS backend
 ```
 
 **Key patterns:**
