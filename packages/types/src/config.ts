@@ -174,4 +174,14 @@ export interface ClientState {
    * Cached memory topics
    */
   memoryTopics: string[];
+
+  /**
+   * Traces list (from last fetchTraces call)
+   */
+  traces: import('./api').TraceSummary[];
+
+  /**
+   * Trace session statistics (from last fetchTraceSessionStats call)
+   */
+  traceSessionStats: import('./api').TraceSessionStats[];
 }

@@ -56,6 +56,11 @@ export { useAgnoMemory } from './hooks/useAgnoMemory';
 export { useAgnoKnowledge } from './hooks/useAgnoKnowledge';
 export { useAgnoMetrics } from './hooks/useAgnoMetrics';
 export { useAgnoEvals } from './hooks/useAgnoEvals';
+export { useAgnoTraces } from './hooks/useAgnoTraces';
+export type {
+  PaginatedTracesResult,
+  PaginatedTraceSessionStatsResult,
+} from './hooks/useAgnoTraces';
 
 // Re-export types from dependencies
 export type {
@@ -124,4 +129,16 @@ export type {
   ExecuteEvalRequest,
   UpdateEvalRunRequest,
   DeleteEvalRunsRequest,
+  // Traces types
+  TraceStatus,
+  TraceSummary,
+  TraceNode,
+  TraceDetail,
+  TraceSessionStats,
+  TracesListResponse,
+  TraceSessionStatsResponse,
+  ListTracesOptions,
+  GetTraceOptions,
+  GetTraceSessionStatsOptions,
+  PaginationInfo,
 } from '@rodrigocoliveira/agno-types';

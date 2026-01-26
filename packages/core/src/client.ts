@@ -40,6 +40,11 @@ import type {
   ListEvalRunsParams,
   ExecuteEvalRequest,
   UpdateEvalRunRequest,
+  TraceDetail,
+  TraceNode,
+  ListTracesOptions,
+  GetTraceOptions,
+  GetTraceSessionStatsOptions,
 } from '@rodrigocoliveira/agno-types';
 import { RunEvent } from '@rodrigocoliveira/agno-types';
 import { MessageStore } from './stores/message-store';
@@ -48,6 +53,7 @@ import { SessionManager } from './managers/session-manager';
 import { MemoryManager } from './managers/memory-manager';
 import { KnowledgeManager } from './managers/knowledge-manager';
 import { EvalManager } from './managers/eval-manager';
+import { TracesManager, PaginatedTracesResult, PaginatedTraceSessionStatsResult } from './managers/traces-manager';
 import { EventProcessor } from './processors/event-processor';
 import { streamResponse } from './parsers/stream-parser';
 import { Logger } from './utils/logger';
@@ -82,6 +88,7 @@ export class AgnoClient extends EventEmitter {
   private memoryManager: MemoryManager;
   private knowledgeManager: KnowledgeManager;
   private evalManager: EvalManager;
+  private tracesManager: TracesManager;
   private eventProcessor: EventProcessor;
   private state: ClientState;
   private pendingUISpecs: Map<string, any>; // toolCallId -> UIComponentSpec
@@ -97,6 +104,7 @@ export class AgnoClient extends EventEmitter {
     this.memoryManager = new MemoryManager();
     this.knowledgeManager = new KnowledgeManager();
     this.evalManager = new EvalManager();
+    this.tracesManager = new TracesManager();
     this.eventProcessor = new EventProcessor();
     this.pendingUISpecs = new Map();
     this.state = {
@@ -113,6 +121,8 @@ export class AgnoClient extends EventEmitter {
       isCancelling: false,
       memories: [],
       memoryTopics: [],
+      traces: [],
+      traceSessionStats: [],
     };
   }
 
@@ -2185,5 +2195,110 @@ export class AgnoClient extends EventEmitter {
     });
 
     this.emit('evals:deleted', { evalRunIds });
+  }
+
+  // =============================================================================
+  // TRACES API METHODS
+  // =============================================================================
+
+  /**
+   * Fetch traces with optional filters
+   * GET /traces
+   *
+   * @param options - Filter and pagination options
+   * @param requestOptions - Optional per-request headers and params
+   * @returns Paginated traces result with traces and pagination info
+   */
+  async fetchTraces(
+    options: ListTracesOptions = {},
+    requestOptions?: { headers?: Record<string, string>; params?: Record<string, string> }
+  ): Promise<PaginatedTracesResult> {
+    const config = this.configManager.getConfig();
+    const dbId = this.configManager.getDbId();
+
+    // Apply dbId from config if not specified in options
+    const traceOptions: ListTracesOptions = {
+      ...options,
+      db_id: options.db_id ?? dbId,
+    };
+
+    const params = this.configManager.buildQueryString(requestOptions?.params);
+
+    const result = await this.withTokenRefresh(() => {
+      const headers = this.configManager.buildRequestHeaders(requestOptions?.headers);
+      return this.tracesManager.fetchTraces(config.endpoint, traceOptions, headers, params);
+    });
+
+    // Update state with fetched traces
+    this.state.traces = result.traces;
+    this.emit('state:change', this.getState());
+
+    return result;
+  }
+
+  /**
+   * Get trace detail or a specific span
+   * GET /traces/{trace_id}
+   *
+   * @param traceId - The trace ID to fetch
+   * @param options - Options including optional span_id, run_id, db_id
+   * @param requestOptions - Optional per-request headers and params
+   * @returns TraceDetail (full trace) or TraceNode (specific span)
+   */
+  async getTraceDetail(
+    traceId: string,
+    options: GetTraceOptions = {},
+    requestOptions?: { headers?: Record<string, string>; params?: Record<string, string> }
+  ): Promise<TraceDetail | TraceNode> {
+    const config = this.configManager.getConfig();
+    const dbId = this.configManager.getDbId();
+
+    // Apply dbId from config if not specified in options
+    const traceOptions: GetTraceOptions = {
+      ...options,
+      db_id: options.db_id ?? dbId,
+    };
+
+    const params = this.configManager.buildQueryString(requestOptions?.params);
+
+    return await this.withTokenRefresh(() => {
+      const headers = this.configManager.buildRequestHeaders(requestOptions?.headers);
+      return this.tracesManager.getTraceDetail(config.endpoint, traceId, traceOptions, headers, params);
+    });
+  }
+
+  /**
+   * Get trace session statistics
+   * GET /trace_session_stats
+   *
+   * @param options - Filter and pagination options
+   * @param requestOptions - Optional per-request headers and params
+   * @returns Paginated trace session stats result
+   */
+  async fetchTraceSessionStats(
+    options: GetTraceSessionStatsOptions = {},
+    requestOptions?: { headers?: Record<string, string>; params?: Record<string, string> }
+  ): Promise<PaginatedTraceSessionStatsResult> {
+    const config = this.configManager.getConfig();
+    const dbId = this.configManager.getDbId();
+
+    // Apply dbId from config if not specified in options
+    const statsOptions: GetTraceSessionStatsOptions = {
+      ...options,
+      db_id: options.db_id ?? dbId,
+    };
+
+    const params = this.configManager.buildQueryString(requestOptions?.params);
+
+    const result = await this.withTokenRefresh(() => {
+      const headers = this.configManager.buildRequestHeaders(requestOptions?.headers);
+      return this.tracesManager.getTraceSessionStats(config.endpoint, statsOptions, headers, params);
+    });
+
+    // Update state with fetched stats
+    this.state.traceSessionStats = result.stats;
+    this.emit('state:change', this.getState());
+
+    return result;
   }
 }

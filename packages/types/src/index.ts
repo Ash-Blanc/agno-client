@@ -89,6 +89,17 @@ export type {
   ExecuteEvalRequest,
   UpdateEvalRunRequest,
   DeleteEvalRunsRequest,
+  // Traces API types
+  TraceStatus,
+  TraceSummary,
+  TraceNode,
+  TraceDetail,
+  TraceSessionStats,
+  TracesListResponse,
+  TraceSessionStatsResponse,
+  ListTracesOptions,
+  GetTraceOptions,
+  GetTraceSessionStatsOptions,
 } from './api';
 
 // Config
