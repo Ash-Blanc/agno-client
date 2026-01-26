@@ -188,125 +188,55 @@ export class AgnoClient extends EventEmitter {
 
     let newSessionId = this.configManager.getSessionId();
 
-    try {
-      formData.append('stream', 'true');
-      formData.append('session_id', newSessionId ?? '');
+    formData.append('stream', 'true');
+    formData.append('session_id', newSessionId ?? '');
 
-      // Add user_id if configured
-      const userId = this.configManager.getUserId();
-      if (userId) {
-        formData.append('user_id', userId);
-      }
+    // Add user_id if configured
+    const userId = this.configManager.getUserId();
+    if (userId) {
+      formData.append('user_id', userId);
+    }
 
-      const headers = this.configManager.buildRequestHeaders(options?.headers);
-      const params = this.configManager.buildQueryString(options?.params);
+    await this.executeStream({
+      apiUrl: runUrl,
+      requestBody: formData,
+      signal: this.abortController.signal,
+      perRequestHeaders: options?.headers,
+      perRequestParams: options?.params,
+      onChunk: (chunk: RunResponse) => {
+        this.handleChunk(chunk, newSessionId, formData.get('message') as string);
 
-      await streamResponse({
-        apiUrl: runUrl,
-        headers,
-        params,
-        requestBody: formData,
-        signal: this.abortController.signal,
-        onChunk: (chunk: RunResponse) => {
-          this.handleChunk(chunk, newSessionId, formData.get('message') as string);
-
-          if (
-            chunk.event === RunEvent.RunStarted ||
-            chunk.event === RunEvent.TeamRunStarted ||
-            chunk.event === RunEvent.ReasoningStarted ||
-            chunk.event === RunEvent.TeamReasoningStarted
-          ) {
-            if (chunk.session_id) {
-              newSessionId = chunk.session_id;
-              this.configManager.setSessionId(chunk.session_id);
-            }
-          }
-        },
-        onError: (error) => {
-          this.handleError(error, newSessionId);
-        },
-        onComplete: async () => {
-          this.state.isStreaming = false;
-          this.currentRunId = undefined;
-          this.state.currentRunId = undefined;
-          this.abortController = undefined;
-          this.emit('stream:end');
-          this.emit('message:complete', this.messageStore.getMessages());
-          this.emit('state:change', this.getState());
-
-          // Trigger refresh if run completed successfully
-          if (this.runCompletedSuccessfully) {
-            this.runCompletedSuccessfully = false;
-            await this.refreshSessionMessages();
-          }
-        },
-      });
-    } catch (error) {
-      // Check if it's a 401 and try to refresh token
-      if (this.isUnauthorizedError(error)) {
-        const refreshed = await this.tryRefreshToken();
-        if (refreshed) {
-          // Retry the streaming request with new token
-          const newHeaders = this.configManager.buildRequestHeaders(options?.headers);
-          const newParams = this.configManager.buildQueryString(options?.params);
-          try {
-            await streamResponse({
-              apiUrl: runUrl,
-              headers: newHeaders,
-              params: newParams,
-              requestBody: formData,
-              signal: this.abortController.signal,
-              onChunk: (chunk: RunResponse) => {
-                this.handleChunk(chunk, newSessionId, formData.get('message') as string);
-
-                if (
-                  chunk.event === RunEvent.RunStarted ||
-                  chunk.event === RunEvent.TeamRunStarted ||
-                  chunk.event === RunEvent.ReasoningStarted ||
-                  chunk.event === RunEvent.TeamReasoningStarted
-                ) {
-                  if (chunk.session_id) {
-                    newSessionId = chunk.session_id;
-                    this.configManager.setSessionId(chunk.session_id);
-                  }
-                }
-              },
-              onError: (err) => {
-                this.handleError(err, newSessionId);
-              },
-              onComplete: async () => {
-                this.state.isStreaming = false;
-                this.currentRunId = undefined;
-                this.state.currentRunId = undefined;
-                this.abortController = undefined;
-                this.emit('stream:end');
-                this.emit('message:complete', this.messageStore.getMessages());
-                this.emit('state:change', this.getState());
-
-                if (this.runCompletedSuccessfully) {
-                  this.runCompletedSuccessfully = false;
-                  await this.refreshSessionMessages();
-                }
-              },
-            });
-            return; // Success on retry
-          } catch (retryError) {
-            // Retry also failed, fall through to error handling
-            this.handleError(
-              retryError instanceof Error ? retryError : new Error(String(retryError)),
-              newSessionId
-            );
-            return;
+        if (
+          chunk.event === RunEvent.RunStarted ||
+          chunk.event === RunEvent.TeamRunStarted ||
+          chunk.event === RunEvent.ReasoningStarted ||
+          chunk.event === RunEvent.TeamReasoningStarted
+        ) {
+          if (chunk.session_id) {
+            newSessionId = chunk.session_id;
+            this.configManager.setSessionId(chunk.session_id);
           }
         }
-      }
+      },
+      onError: (error) => {
+        this.handleError(error, newSessionId);
+      },
+      onComplete: async () => {
+        this.state.isStreaming = false;
+        this.currentRunId = undefined;
+        this.state.currentRunId = undefined;
+        this.abortController = undefined;
+        this.emit('stream:end');
+        this.emit('message:complete', this.messageStore.getMessages());
+        this.emit('state:change', this.getState());
 
-      // Not a 401 or refresh failed, handle as normal error
-      this.handleError(
-        error instanceof Error ? error : new Error(String(error)),
-        newSessionId
-      );
-    }
+        // Trigger refresh if run completed successfully
+        if (this.runCompletedSuccessfully) {
+          this.runCompletedSuccessfully = false;
+          await this.refreshSessionMessages();
+        }
+      },
+    });
   }
 
   /**
@@ -496,12 +426,15 @@ export class AgnoClient extends EventEmitter {
   }
 
   /**
-   * Check if an error is a 401 Unauthorized error
+   * Check if an error is a 401 Unauthorized error with "Token has expired" detail.
+   * Only triggers token refresh for expired tokens, not other auth failures.
    */
-  private isUnauthorizedError(error: unknown): boolean {
+  private isTokenExpiredError(error: unknown): boolean {
     if (!(error instanceof Error)) return false;
     const errorWithStatus = error as Error & { status?: number };
-    return errorWithStatus.status === 401 || error.message.includes('401');
+    const is401 = errorWithStatus.status === 401 || error.message.includes('401');
+    const isExpired = error.message.toLowerCase().includes('token has expired');
+    return is401 && isExpired;
   }
 
   /**
@@ -528,6 +461,83 @@ export class AgnoClient extends EventEmitter {
     }
 
     return false;
+  }
+
+  /**
+   * Execute an operation with automatic token refresh on 401 Unauthorized.
+   * Centralizes the token refresh and retry logic for all non-streaming API calls.
+   *
+   * @param operation - A function that performs the API call and returns a Promise
+   * @returns The result of the operation
+   * @throws The original error if it's not a 401 or if token refresh fails
+   */
+  private async withTokenRefresh<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error) {
+      if (this.isTokenExpiredError(error)) {
+        const refreshed = await this.tryRefreshToken();
+        if (refreshed) {
+          return await operation();
+        }
+      }
+      throw error;
+    }
+  }
+
+  /**
+   * Execute a streaming request with automatic token refresh on 401 Unauthorized.
+   * This method handles the complexity of rebuilding headers after token refresh.
+   *
+   * @param config - Configuration for the streaming request
+   */
+  private async executeStream(config: {
+    apiUrl: string;
+    requestBody: FormData;
+    signal: AbortSignal;
+    perRequestHeaders?: Record<string, string>;
+    perRequestParams?: Record<string, string>;
+    onChunk: (chunk: RunResponse) => void;
+    onError: (error: Error) => void;
+    onComplete: () => Promise<void>;
+  }): Promise<void> {
+    const executeStream = async () => {
+      const headers = this.configManager.buildRequestHeaders(config.perRequestHeaders);
+      const params = this.configManager.buildQueryString(config.perRequestParams);
+
+      await streamResponse({
+        apiUrl: config.apiUrl,
+        headers,
+        params,
+        requestBody: config.requestBody,
+        signal: config.signal,
+        onChunk: config.onChunk,
+        onError: config.onError,
+        onComplete: config.onComplete,
+      });
+    };
+
+    try {
+      await executeStream();
+    } catch (error) {
+      if (this.isTokenExpiredError(error)) {
+        const refreshed = await this.tryRefreshToken();
+        if (refreshed) {
+          try {
+            await executeStream();
+            return;
+          } catch (retryError) {
+            config.onError(
+              retryError instanceof Error ? retryError : new Error(String(retryError))
+            );
+            return;
+          }
+        }
+      }
+      config.onError(
+        error instanceof Error ? error : new Error(String(error))
+      );
+    }
   }
 
   /**
@@ -732,7 +742,7 @@ export class AgnoClient extends EventEmitter {
 
     const params = this.configManager.buildQueryString(options?.params);
 
-    const doFetch = async () => {
+    const response = await this.withTokenRefresh(() => {
       const headers = this.configManager.buildRequestHeaders();
       return this.sessionManager.fetchSession(
         config.endpoint,
@@ -743,24 +753,7 @@ export class AgnoClient extends EventEmitter {
         userId,
         params
       );
-    };
-
-    let response;
-    try {
-      response = await doFetch();
-    } catch (error) {
-      // Check if it's a 401 and try to refresh token
-      if (this.isUnauthorizedError(error)) {
-        const refreshed = await this.tryRefreshToken();
-        if (refreshed) {
-          response = await doFetch();
-        } else {
-          throw error;
-        }
-      } else {
-        throw error;
-      }
-    }
+    });
 
     const messages = this.sessionManager.convertSessionToMessages(response);
     Logger.debug('[AgnoClient] Setting messages to store:', `${messages.length} messages`);
@@ -791,7 +784,7 @@ export class AgnoClient extends EventEmitter {
 
     const params = this.configManager.buildQueryString(options?.params);
 
-    const doFetch = async () => {
+    const sessions = await this.withTokenRefresh(() => {
       const headers = this.configManager.buildRequestHeaders();
       return this.sessionManager.fetchSessions(
         config.endpoint,
@@ -801,24 +794,7 @@ export class AgnoClient extends EventEmitter {
         headers,
         params
       );
-    };
-
-    let sessions: SessionEntry[];
-    try {
-      sessions = await doFetch();
-    } catch (error) {
-      // Check if it's a 401 and try to refresh token
-      if (this.isUnauthorizedError(error)) {
-        const refreshed = await this.tryRefreshToken();
-        if (refreshed) {
-          sessions = await doFetch();
-        } else {
-          throw error;
-        }
-      } else {
-        throw error;
-      }
-    }
+    });
 
     this.state.sessions = sessions;
     this.emit('state:change', this.getState());
@@ -838,7 +814,7 @@ export class AgnoClient extends EventEmitter {
 
     const params = this.configManager.buildQueryString(options?.params);
 
-    const doDelete = async () => {
+    await this.withTokenRefresh(() => {
       const headers = this.configManager.buildRequestHeaders();
       return this.sessionManager.deleteSession(
         config.endpoint,
@@ -847,23 +823,7 @@ export class AgnoClient extends EventEmitter {
         headers,
         params
       );
-    };
-
-    try {
-      await doDelete();
-    } catch (error) {
-      // Check if it's a 401 and try to refresh token
-      if (this.isUnauthorizedError(error)) {
-        const refreshed = await this.tryRefreshToken();
-        if (refreshed) {
-          await doDelete();
-        } else {
-          throw error;
-        }
-      } else {
-        throw error;
-      }
-    }
+    });
 
     // Remove from state
     this.state.sessions = this.state.sessions.filter(
@@ -1294,96 +1254,36 @@ export class AgnoClient extends EventEmitter {
       formData.append('user_id', userId);
     }
 
-    const headers = this.configManager.buildRequestHeaders(options?.headers);
-    const params = this.configManager.buildQueryString(options?.params);
+    await this.executeStream({
+      apiUrl: continueUrl,
+      requestBody: formData,
+      signal: this.abortController.signal,
+      perRequestHeaders: options?.headers,
+      perRequestParams: options?.params,
+      onChunk: (chunk: RunResponse) => {
+        this.handleChunk(chunk, currentSessionId, '');
+      },
+      onError: (error) => {
+        this.handleError(error, currentSessionId);
+      },
+      onComplete: async () => {
+        this.state.isStreaming = false;
+        this.state.pausedRunId = undefined;
+        this.state.toolsAwaitingExecution = undefined;
+        this.currentRunId = undefined;
+        this.state.currentRunId = undefined;
+        this.abortController = undefined;
+        this.emit('stream:end');
+        this.emit('message:complete', this.messageStore.getMessages());
+        this.emit('state:change', this.getState());
 
-    try {
-      await streamResponse({
-        apiUrl: continueUrl,
-        headers,
-        params,
-        requestBody: formData,
-        signal: this.abortController.signal,
-        onChunk: (chunk: RunResponse) => {
-          this.handleChunk(chunk, currentSessionId, '');
-        },
-        onError: (error) => {
-          this.handleError(error, currentSessionId);
-        },
-        onComplete: async () => {
-          this.state.isStreaming = false;
-          this.state.pausedRunId = undefined;
-          this.state.toolsAwaitingExecution = undefined;
-          this.currentRunId = undefined;
-          this.state.currentRunId = undefined;
-          this.abortController = undefined;
-          this.emit('stream:end');
-          this.emit('message:complete', this.messageStore.getMessages());
-          this.emit('state:change', this.getState());
-
-          // Trigger refresh if run completed successfully
-          if (this.runCompletedSuccessfully) {
-            this.runCompletedSuccessfully = false;
-            await this.refreshSessionMessages();
-          }
-        },
-      });
-    } catch (error) {
-      // Check if it's a 401 and try to refresh token
-      if (this.isUnauthorizedError(error)) {
-        const refreshed = await this.tryRefreshToken();
-        if (refreshed) {
-          // Retry the streaming request with new token
-          const newHeaders = this.configManager.buildRequestHeaders(options?.headers);
-          const newParams = this.configManager.buildQueryString(options?.params);
-          try {
-            await streamResponse({
-              apiUrl: continueUrl,
-              headers: newHeaders,
-              params: newParams,
-              requestBody: formData,
-              signal: this.abortController.signal,
-              onChunk: (chunk: RunResponse) => {
-                this.handleChunk(chunk, currentSessionId, '');
-              },
-              onError: (err) => {
-                this.handleError(err, currentSessionId);
-              },
-              onComplete: async () => {
-                this.state.isStreaming = false;
-                this.state.pausedRunId = undefined;
-                this.state.toolsAwaitingExecution = undefined;
-                this.currentRunId = undefined;
-                this.state.currentRunId = undefined;
-                this.abortController = undefined;
-                this.emit('stream:end');
-                this.emit('message:complete', this.messageStore.getMessages());
-                this.emit('state:change', this.getState());
-
-                if (this.runCompletedSuccessfully) {
-                  this.runCompletedSuccessfully = false;
-                  await this.refreshSessionMessages();
-                }
-              },
-            });
-            return; // Success on retry
-          } catch (retryError) {
-            // Retry also failed, fall through to error handling
-            this.handleError(
-              retryError instanceof Error ? retryError : new Error(String(retryError)),
-              currentSessionId
-            );
-            return;
-          }
+        // Trigger refresh if run completed successfully
+        if (this.runCompletedSuccessfully) {
+          this.runCompletedSuccessfully = false;
+          await this.refreshSessionMessages();
         }
-      }
-
-      // Not a 401 or refresh failed, handle as normal error
-      this.handleError(
-        error instanceof Error ? error : new Error(String(error)),
-        currentSessionId
-      );
-    }
+      },
+    });
   }
 
   /**
