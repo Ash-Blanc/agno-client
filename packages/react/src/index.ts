@@ -53,6 +53,7 @@ export { useAgnoToolExecution, getCustomRender } from './hooks/useAgnoToolExecut
 export type { ToolHandler, ToolExecutionEvent } from './hooks/useAgnoToolExecution';
 export { useAgnoCustomEvents } from './hooks/useAgnoCustomEvents';
 export { useAgnoMemory } from './hooks/useAgnoMemory';
+export { useAgnoKnowledge } from './hooks/useAgnoKnowledge';
 
 // Re-export types from dependencies
 export type {
@@ -88,4 +89,19 @@ export type {
   UserMemoryStats,
   UserMemoryStatsResponse,
   UserMemoryStatsParams,
+  // Knowledge API types
+  ContentStatus,
+  ReaderSchema,
+  ChunkerSchema,
+  VectorDbSchema,
+  KnowledgeConfigResponse,
+  ContentResponse,
+  ContentStatusResponse,
+  ContentListResponse,
+  ContentListOptions,
+  VectorSearchRequest,
+  VectorSearchResult,
+  VectorSearchResponse,
+  ContentUploadRequest,
+  ContentUpdateRequest,
 } from '@rodrigocoliveira/agno-types';
