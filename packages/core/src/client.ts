@@ -854,6 +854,7 @@ export class AgnoClient extends EventEmitter {
       this.clearMessages();
     }
 
+    this.emit('session:deleted', { sessionId });
     this.emit('state:change', this.getState());
   }
 
@@ -1089,6 +1090,7 @@ export class AgnoClient extends EventEmitter {
       this.clearMessages();
     }
 
+    this.emit('sessions:deleted', { sessionIds });
     this.emit('state:change', this.getState());
   }
 
