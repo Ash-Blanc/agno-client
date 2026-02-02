@@ -75,6 +75,7 @@ export function StateInspector() {
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="state" className="w-full">
+            
             <TabsList className="w-full">
               <TabsTrigger value="state" className="flex-1">
                 State

@@ -6,6 +6,7 @@ import {
   PromptInputTools,
   PromptInputSubmit,
   type PromptInputMessage,
+  PromptInputActionAddAttachments,
 } from '@/components/ai-elements/prompt-input'
 
 interface ChatInputProps {
