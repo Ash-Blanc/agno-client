@@ -52,7 +52,7 @@ OPENAI_API_KEY=your-openai-key
 ### 4. Start the server
 
 ```bash
-python agno-server.py
+python server.py
 ```
 
 The server will start on `http://localhost:7777`.
