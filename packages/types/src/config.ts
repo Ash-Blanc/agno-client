@@ -79,6 +79,21 @@ export interface AgnoClientConfig {
    * ```
    */
   onTokenExpired?: () => Promise<string | null | undefined> | string | null | undefined;
+
+  /**
+   * Whether to emit member:* events for internal team member activity.
+   * When true, internal agent events during team runs are emitted as member:* events.
+   * Useful for debugging or building advanced UIs that show team member activity.
+   * Default: false
+   */
+  emitMemberEvents?: boolean;
+
+  /**
+   * Whether to request member events from the backend during team runs.
+   * When false, the backend may skip sending internal agent events (saves bandwidth).
+   * Default: false
+   */
+  streamMemberEvents?: boolean;
 }
 
 /**

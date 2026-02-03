@@ -56,4 +56,10 @@ export type ClientEvent =
   | 'ui:update'       // Emitted when UI component data updates (streaming)
   | 'ui:complete'     // Emitted when UI component is finalized
   | 'ui:render'      // Emitted when a new UI component should be rendered
-  | 'custom:event';
+  | 'custom:event'
+  // Team member events (internal agent activity within teams)
+  | 'member:event'    // Emitted for any internal team member event (when emitMemberEvents is true)
+  | 'member:started'  // Emitted when a team member starts processing
+  | 'member:content'  // Emitted when a team member produces content
+  | 'member:completed' // Emitted when a team member completes
+  | 'member:error';   // Emitted when a team member encounters an error

@@ -189,6 +189,34 @@ export class ConfigManager {
   }
 
   /**
+   * Get whether to emit member:* events for internal team activity
+   */
+  getEmitMemberEvents(): boolean {
+    return this.config.emitMemberEvents ?? false;
+  }
+
+  /**
+   * Set whether to emit member:* events
+   */
+  setEmitMemberEvents(emit: boolean): void {
+    this.updateField('emitMemberEvents', emit);
+  }
+
+  /**
+   * Get whether to request member events from backend
+   */
+  getStreamMemberEvents(): boolean {
+    return this.config.streamMemberEvents ?? false;
+  }
+
+  /**
+   * Set whether to request member events from backend
+   */
+  setStreamMemberEvents(stream: boolean): void {
+    this.updateField('streamMemberEvents', stream);
+  }
+
+  /**
    * Get current entity ID (agent or team based on mode)
    */
   getCurrentEntityId(): string | undefined {

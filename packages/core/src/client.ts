@@ -243,6 +243,12 @@ export class AgnoClient extends EventEmitter {
       formData.append('user_id', userId);
     }
 
+    // For team mode, control whether backend sends member events
+    if (this.configManager.getMode() === 'team') {
+      const streamMembers = this.configManager.getStreamMemberEvents();
+      formData.append('stream_member_events', String(streamMembers));
+    }
+
     await this.executeStream({
       apiUrl: runUrl,
       requestBody: formData,
@@ -286,20 +292,79 @@ export class AgnoClient extends EventEmitter {
   }
 
   /**
+   * Determine if a RunEvent is a team-level event (prefixed with "Team")
+   */
+  private isTeamEvent(event: RunEvent): boolean {
+    return event.toString().startsWith('Team');
+  }
+
+  /**
+   * Determine if an event should update the user-facing message based on mode.
+   *
+   * In team mode: only Team* events should update the user-facing message.
+   * In agent mode: only Run* (non-Team) events should update the user-facing message.
+   *
+   * Certain events are always processed regardless of mode:
+   * - CustomEvent, RunPaused, RunContinued (control flow events)
+   */
+  private shouldProcessForUserMessage(event: RunEvent): boolean {
+    // Control flow events are always processed
+    if (
+      event === RunEvent.CustomEvent ||
+      event === RunEvent.RunPaused ||
+      event === RunEvent.RunContinued
+    ) {
+      return true;
+    }
+
+    const mode = this.configManager.getMode();
+    const isTeam = this.isTeamEvent(event);
+
+    if (mode === 'team') {
+      // In team mode, only Team* events update user-facing messages
+      return isTeam;
+    }
+
+    // In agent mode, only non-Team events update user-facing messages
+    return !isTeam;
+  }
+
+  /**
+   * Emit member-specific events for internal team member activity.
+   * Only emits when emitMemberEvents config option is true.
+   */
+  private emitMemberEvent(event: RunEvent, chunk: RunResponse): void {
+    if (!this.configManager.getEmitMemberEvents()) return;
+
+    this.emit('member:event', chunk);
+
+    // Emit specific member events based on event type
+    if (event === RunEvent.RunStarted) {
+      this.emit('member:started', chunk);
+    } else if (event === RunEvent.RunContent) {
+      this.emit('member:content', chunk);
+    } else if (event === RunEvent.RunCompleted) {
+      this.emit('member:completed', chunk);
+    } else if (event === RunEvent.RunError) {
+      this.emit('member:error', chunk);
+    }
+  }
+
+  /**
    * Handle streaming chunk
    */
   private handleChunk(chunk: RunResponse, currentSessionId: string | undefined, messageContent: string): void {
     const event = chunk.event as RunEvent;
 
-    // Handle session creation and run ID tracking
+    // Handle session creation and run ID tracking (always process these regardless of mode)
     if (
       event === RunEvent.RunStarted ||
       event === RunEvent.TeamRunStarted ||
       event === RunEvent.ReasoningStarted ||
       event === RunEvent.TeamReasoningStarted
     ) {
-      // Track current run ID
-      if (chunk.run_id) {
+      // Track current run ID (only for root-level events)
+      if (this.shouldProcessForUserMessage(event) && chunk.run_id) {
         this.currentRunId = chunk.run_id;
         this.state.currentRunId = chunk.run_id;
         this.emit('state:change', this.getState());
@@ -347,6 +412,13 @@ export class AgnoClient extends EventEmitter {
         tools: this.state.toolsAwaitingExecution,
       });
       this.emit('state:change', this.getState());
+      return;
+    }
+
+    // In team mode, filter out internal agent events from user-facing messages
+    if (!this.shouldProcessForUserMessage(event)) {
+      // Emit member events for debugging/advanced UIs if configured
+      this.emitMemberEvent(event, chunk);
       return;
     }
 

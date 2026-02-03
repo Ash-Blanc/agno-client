@@ -363,12 +363,17 @@ export class SessionManager {
   }
 
   /**
-   * Convert session runs array to chat messages
+   * Convert session runs array to chat messages.
+   * Filters out child runs (those with parent_run_id) to prevent
+   * internal team member communications from appearing as user messages.
    */
   convertSessionToMessages(
     runs: Array<RunSchema | TeamRunSchema>
   ): ChatMessage[] {
-    const messages = this.convertRunsToMessages(runs);
+    // Filter to only root-level runs (no parent = user-initiated)
+    // Child runs have parent_run_id set and represent internal team member work
+    const rootRuns = runs.filter(run => !run.parent_run_id);
+    const messages = this.convertRunsToMessages(rootRuns);
     return messages;
   }
 
