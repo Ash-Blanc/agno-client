@@ -1,6 +1,6 @@
 {
   "name": "@rodrigocoliveira/agno-react",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "React hooks for Agno client with frontend tool execution (HITL) support",
   "author": "rodrigocoliveira",
   "license": "MIT",
