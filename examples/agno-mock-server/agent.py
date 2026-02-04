@@ -321,7 +321,7 @@ def create_agent(db):
             render_visualization,
             show_alert,
         ],
-        model=OpenAIChat(id="gpt-4o-mini"),
+        model=OpenAIChat(id="gpt-4o-audio-preview"),
         description="AI assistant that demonstrates generative UI capabilities with interactive charts, cards, tables, and visualizations.",
         instructions=[
             "You are a helpful AI assistant that creates beautiful, interactive visualizations.",
