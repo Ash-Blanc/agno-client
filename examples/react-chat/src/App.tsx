@@ -1,11 +1,11 @@
-import { AgnoProvider } from '@rodrigocoliveira/agno-react'
+import { AgnoProvider, useAgnoActions } from '@rodrigocoliveira/agno-react'
 import { AgnoClientConfig } from '@rodrigocoliveira/agno-types'
 import { Toaster } from '@/components/ui/sonner'
 import { ConfigPanel } from '@/components/config/ConfigPanel'
 import { ChatInterface } from '@/components/chat/ChatInterface'
 import { SessionSidebar } from '@/components/sessions/SessionSidebar'
 import { StateInspector } from '@/components/debug/StateInspector'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -36,6 +36,23 @@ const INITIAL_CONFIG: AgnoClientConfig = {
   dbId: import.meta.env.VITE_AGNO_DB_ID || undefined,
 }
 
+/**
+ * Auto-initializes the Agno client on mount.
+ * Must be rendered inside AgnoProvider so hooks have access to the client.
+ */
+function AutoInitializer() {
+  const { initialize } = useAgnoActions()
+  const initialized = useRef(false)
+
+  useEffect(() => {
+    if (initialized.current) return
+    initialized.current = true
+    initialize()
+  }, [])
+
+  return null
+}
+
 function App() {
   const [showSessionSidebar, setShowSessionSidebar] = useState(true)
   const [showConfigPanel, setShowConfigPanel] = useState(false)
@@ -47,6 +64,7 @@ function App() {
 
   return (
     <AgnoProvider config={INITIAL_CONFIG}>
+      <AutoInitializer />
       <div className="flex h-screen bg-background text-foreground">
         {/* Session Sidebar - Left */}
         {showSessionSidebar && (
