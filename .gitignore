@@ -9,8 +9,6 @@ build/
 *.tsbuildinfo
 
 # Environment
-.env
-.env.local
 .env.development.local
 .env.test.local
 .env.production.local
@@ -59,3 +57,4 @@ tmp/
 __pycache__/
 
 .playwright-mcp
+config.bat

@@ -4,11 +4,12 @@ Independent open-source client libraries for [Agno](https://www.agno.com) agents
 
 ## 📦 Packages
 
-This monorepo contains three packages:
+This monorepo contains four packages:
 
 - **[@rodrigocoliveira/agno-client](./packages/core)** - Core stateful client library
 - **[@rodrigocoliveira/agno-react](./packages/react)** - React hooks adapter
 - **[@rodrigocoliveira/agno-types](./packages/types)** - Shared TypeScript types
+- - **[@rodrigocoliveira/agno-vue](./packages/vue)** - Vue 3 integration for agno-client with Composition API composables
 
 ## 🔒 Security & Best Practices
 
@@ -62,6 +63,8 @@ npm install @rodrigocoliveira/agno-client
 
 # For types only (if using the core library)
 npm install @rodrigocoliveira/agno-types
+#  For Vue applications
+npm install @rodrigocoliveira/agno-vue
 ```
 
 ### React Example
@@ -223,6 +226,7 @@ function ChatComponent() {
 
 - [Core Client API](./packages/core/README.md)
 - [React Hooks API](./packages/react/README.md)
+- - [Vue Composables API](./packages/vue/README.md)
 - [Type Definitions](./packages/types/README.md)
 - [Frontend Tool Execution & Generative UI](./FRONTEND_TOOL_EXECUTION.md)
 
