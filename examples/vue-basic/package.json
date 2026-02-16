@@ -1,0 +1,23 @@
+{
+  "name": "agno-vue-basic",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Basic Vue 3 example with agno-client integration",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@rodrigocoliveira/agno-client": "*",
+    "@rodrigocoliveira/agno-vue": "*",
+    "vue": "^3.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0"
+  }
+}
