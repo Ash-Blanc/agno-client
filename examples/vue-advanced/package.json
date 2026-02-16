@@ -1,0 +1,26 @@
+{
+  "name": "agno-vue-advanced",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Advanced Vue 3 example with frontend tool execution and complex interactions",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@rodrigocoliveira/agno-client": "*",
+    "@rodrigocoliveira/agno-vue": "*",
+    "vue": "^3.3.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^4.5.0",
+    "@vue/test-utils": "^2.4.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.0",
+    "vitest": "^1.0.0"
+  }
+}
